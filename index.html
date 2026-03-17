@@ -165,7 +165,69 @@
   .btn-restart:hover { transform: translateY(-1px); box-shadow: 0 6px 30px rgba(33,150,243,0.45); }
 
   @media (max-width: 600px) { .acc-grid { grid-template-columns: 1fr; } }
+  /* Charts grid */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  @media(max-width:600px){ .charts-grid { grid-template-columns: 1fr; } }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+  .chart-card-title { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #61d4ff; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .chart-wrap { position: relative; height: 240px; }
+  .profile-bars { display: flex; flex-direction: column; gap: 10px; }
+  .profile-bar-row { display: flex; flex-direction: column; gap: 5px; }
+  .profile-bar-header { display: flex; justify-content: space-between; align-items: center; }
+  .profile-bar-name { font-size: 13px; font-weight: 600; }
+  .profile-bar-score { font-size: 12px; color: var(--muted); }
+  .profile-bar-track { height: 5px; background: var(--border); border-radius: 100px; overflow: hidden; }
+  .profile-bar-fill { height: 100%; border-radius: 100px; transition: width 1s cubic-bezier(.4,0,.2,1); }
+
+  /* Results hero */
+  .results-hero-block {
+    text-align: center; margin-bottom: 48px;
+    padding: 36px 28px; border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: var(--surface);
+  }
+  .results-hero-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.15em;
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  .results-hero-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin-bottom: 14px;
+  }
+  .results-hero-desc {
+    font-size: 15px; line-height: 1.75; color: var(--muted);
+    max-width: 500px; margin: 0 auto 20px;
+  }
+  .results-hero-badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 10px 22px; border-radius: 100px;
+    font-size: 14px; font-weight: 600;
+  }
+
+  /* Charts grid */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  @media(max-width:640px){ .charts-grid { grid-template-columns: 1fr; } }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+  .chart-card-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #61d4ff; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .chart-wrap { position: relative; height: 240px; }
+  .profile-bars { display: flex; flex-direction: column; gap: 10px; }
+  .profile-bar-row { display: flex; flex-direction: column; gap: 5px; }
+  .profile-bar-header { display: flex; justify-content: space-between; align-items: center; }
+  .profile-bar-name { font-size: 13px; font-weight: 600; }
+  .profile-bar-score { font-size: 12px; color: var(--muted); }
+  .profile-bar-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .profile-bar-fill { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(.4,0,.2,1); }
+
+  /* Radar chart */
+  .radar-section { margin-bottom: 40px; }
+  .radar-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px 24px;
+  }
+  .radar-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #61d4ff; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .radar-wrap { position: relative; height: 340px; max-width: 500px; margin: 0 auto; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="orb orb1"></div>
@@ -202,6 +264,23 @@
     <div class="results-header">
       <h2>Votre profil PCM</h2>
       <p>Score calculé d'après l'ordre de vos réponses à chaque question</p>
+    </div>
+    <div id="results-hero"></div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-card-title">Distribution des profils</div>
+        <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Intensité par profil</div>
+        <div class="profile-bars" id="profile-bars-list"></div>
+      </div>
+    </div>
+    <div class="radar-section">
+      <div class="radar-card">
+        <div class="radar-title">Radar de personnalité</div>
+        <div class="radar-wrap"><canvas id="radarChart"></canvas></div>
+      </div>
     </div>
     <div class="breakdown-section">
       <div class="breakdown-title">Classement — cliquez pour en savoir plus</div>
@@ -574,13 +653,82 @@ function showResults() {
   const scores = calcScores();
   const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   const maxScore = sorted[0][1];
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+  const pct = {};
+  Object.entries(scores).forEach(([sym, s]) => pct[sym] = Math.round((s / totalScore) * 100));
+
+  // ---- Bar chart ----
+  if (window._barChart) { window._barChart.destroy(); }
+  const ctxBar = document.getElementById('barChart');
+  if (ctxBar) {
+    const barSorted = [...sorted];
+    window._barChart = new Chart(ctxBar.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: barSorted.map(([sym]) => PROFILES[sym].name),
+        datasets: [{
+          data: barSorted.map(([sym]) => scores[sym]),
+          backgroundColor: barSorted.map(([sym]) => PROFILES[sym].color + '99'),
+          borderColor: barSorted.map(([sym]) => PROFILES[sym].color),
+          borderWidth: 2, borderRadius: 8,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 11 } } },
+          x: { grid: { display: false }, ticks: { color: '#ccc', font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  // ---- Profile bars ----
+  const barsEl = document.getElementById('profile-bars-list');
+  if (barsEl) {
+    barsEl.innerHTML = '';
+    sorted.forEach(([sym]) => {
+      const prof = PROFILES[sym];
+      const p = pct[sym];
+      barsEl.innerHTML += '<div class="profile-bar-row">' +
+        '<div class="profile-bar-header">' +
+          '<span class="profile-bar-name" style="color:' + prof.color + '">' + sym + ' ' + prof.name + '</span>' +
+          '<span class="profile-bar-score">' + p + '%</span>' +
+        '</div>' +
+        '<div class="profile-bar-track">' +
+          '<div class="profile-bar-fill" style="width:0%;background:' + prof.color + '" data-w="' + p + '"></div>' +
+        '</div>' +
+      '</div>';
+    });
+    setTimeout(() => {
+      barsEl.querySelectorAll('.profile-bar-fill').forEach(el => { el.style.width = el.dataset.w + '%'; });
+    }, 200);
+  }
+
+  // ---- Hero block ----
+  const topSym = sorted[0][0];
+  const topProf = PROFILES[topSym];
+  const heroEl = document.getElementById('results-hero');
+  if (heroEl) {
+    heroEl.innerHTML =
+      '<div class="results-hero-block" style="border-color:' + topProf.color + '33;background:' + topProf.bg + '">' +
+        '<div class="results-hero-eyebrow" style="color:' + topProf.color + '">Profil dominant</div>' +
+        '<div class="results-hero-title">Tu es <em style="color:' + topProf.color + '">' + topProf.name + '</em></div>' +
+        '<div class="results-hero-desc">' + topProf.caracteristiques + '</div>' +
+        '<div class="results-hero-badge" style="background:' + topProf.bg + ';border:1px solid ' + topProf.color + '55;color:' + topProf.color + '">' +
+          topSym + ' ' + topProf.name + ' · Couleur ' + topProf.couleur +
+        '</div>' +
+      '</div>';
+  }
 
   const grid = document.getElementById('scores-grid');
   grid.innerHTML = '';
 
   sorted.forEach(([sym, score], i) => {
     const prof = PROFILES[sym];
-    const pct = Math.round((score / maxScore) * 100);
+    const barPct = Math.round((score / maxScore) * 100);
+    const freq = pct[sym];
     const isFirst = i === 0;
 
     const acc = document.createElement('div');
@@ -594,11 +742,14 @@ function showResults() {
           '<div class="accordion-profile" style="color:' + prof.color + '">' + prof.name + '</div>' +
           '<div class="accordion-subtitle">Couleur : ' + prof.couleur + '</div>' +
         '</div>' +
-        '<div class="accordion-score" style="color:' + (isFirst ? prof.color : 'var(--muted)') + '">' + score + '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-right:4px">' +
+          '<div style="font-size:12px;color:var(--muted);font-weight:500">' + freq + '%</div>' +
+          '<div class="accordion-score" style="color:' + (isFirst ? prof.color : 'var(--muted)') + '">' + score + 'pts</div>' +
+        '</div>' +
         '<div class="accordion-arrow">&#9660;</div>' +
       '</button>' +
       '<div class="accordion-body">' +
-        '<div class="acc-bar-wrap"><div class="acc-bar-fill" style="width:0%;background:' + prof.color + '" data-pct="' + pct + '"></div></div>' +
+        '<div class="acc-bar-wrap"><div class="acc-bar-fill" style="width:0%;background:' + prof.color + '" data-pct="' + barPct + '"></div></div>' +
         '<div class="acc-grid">' +
           '<div class="acc-card full" style="border-color:' + prof.color + '22">' +
             '<div class="acc-card-label" style="color:' + prof.color + '">Caractéristiques</div>' +
@@ -630,6 +781,61 @@ function showResults() {
       el.style.width = el.dataset.pct + '%';
     });
   }, 150);
+
+
+  // ---- Radar chart ----
+  const symToKey = { '☆':'orange', '□':'marron', '△':'bleu', '○':'rouge', '✚':'violet', '☽':'jaune' };
+  const profileColors = { orange:'#ff8c42', jaune:'#ffd166', marron:'#8B4513', rouge:'#ff4d6a', bleu:'#61d4ff', violet:'#c77dff' };
+  const profileNames  = { orange:'Empathique', jaune:'Rebelle', marron:'Rêveur', rouge:'Promoteur', bleu:'Travaillonaire', violet:'Persévérant' };
+  const keyOrder = ['orange','jaune','marron','rouge','bleu','violet'];
+
+  // Build radar scores from calcScores()
+  const radarScores = {};
+  keyOrder.forEach(k => radarScores[k] = 0);
+  Object.entries(scores).forEach(([sym, val]) => {
+    const k = symToKey[sym];
+    if (k) radarScores[k] = val;
+  });
+
+  if (window._radarChart) { window._radarChart.destroy(); }
+  const ctx = document.getElementById('radarChart');
+  if (ctx) {
+    window._radarChart = new Chart(ctx.getContext('2d'), {
+      type: 'radar',
+      data: {
+        labels: keyOrder.map(k => profileNames[k]),
+        datasets: [{
+          label: 'Votre profil',
+          data: keyOrder.map(k => radarScores[k]),
+          backgroundColor: 'rgba(97,212,255,0.1)',
+          borderColor: '#61d4ff',
+          borderWidth: 2.5,
+          pointBackgroundColor: keyOrder.map(k => profileColors[k]),
+          pointBorderColor: '#0d0d14',
+          pointBorderWidth: 2,
+          pointRadius: 7,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          r: {
+            grid: { color: 'rgba(255,255,255,0.07)' },
+            angleLines: { color: 'rgba(255,255,255,0.07)' },
+            pointLabels: {
+              color: keyOrder.map(k => profileColors[k]),
+              font: { size: 13, family: 'DM Sans', weight: '600' }
+            },
+            ticks: { display: false, backdropColor: 'transparent' },
+            suggestedMin: 0,
+          }
+        }
+      }
+    });
+  }
+
 }
 
 function toggleAccordion(btn) {
