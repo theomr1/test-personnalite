@@ -169,10 +169,7 @@
 
   @media (max-width: 600px) { .acc-grid { grid-template-columns: 1fr; } }
   /* Charts grid */
-  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
-  @media(max-width:600px){ .charts-grid { grid-template-columns: 1fr; } }
-  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
-  .chart-card-title { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #61d4ff; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+
   .chart-wrap { position: relative; height: 240px; }
   .profile-bars { display: flex; flex-direction: column; gap: 10px; }
   .profile-bar-row { display: flex; flex-direction: column; gap: 5px; }
@@ -208,9 +205,13 @@
   }
 
   /* Charts grid */
-  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
-  @media(max-width:640px){ .charts-grid { grid-template-columns: 1fr; } }
-  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; width: 100%; min-width: 0; }
+  @media(max-width:640px){
+    .charts-grid { grid-template-columns: 1fr; }
+    .chart-wrap { height: 180px; }
+    .charts-grid canvas { max-width: 100% !important; }
+  }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; min-width: 0; overflow: hidden; }
   .chart-card-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #61d4ff; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
   .chart-wrap { position: relative; height: 240px; }
   .profile-bars { display: flex; flex-direction: column; gap: 10px; }
@@ -222,13 +223,13 @@
   .profile-bar-fill { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(.4,0,.2,1); }
 
   /* Radar chart */
-  .radar-section { margin-bottom: 40px; }
+  .radar-section { margin-bottom: 16px; }
   .radar-card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 14px; padding: 28px 24px;
   }
   .radar-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #61d4ff; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-  .radar-wrap { position: relative; height: 340px; max-width: 500px; margin: 0 auto; }
+  .radar-wrap { position: relative; height: 340px; max-width: 500px; width: 100%; margin: 0 auto; display: block; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
@@ -816,58 +817,78 @@ function showResultsFromScores(scores) {
 
 
   // ---- Radar chart ----
+  window._radarScores = {};
   const symToKey = { '☆':'orange', '□':'marron', '△':'bleu', '○':'rouge', '✚':'violet', '☽':'jaune' };
-  const profileColors = { orange:'#ff8c42', jaune:'#ffd166', marron:'#8B4513', rouge:'#ff4d6a', bleu:'#61d4ff', violet:'#c77dff' };
-  const profileNames  = { orange:'Empathique', jaune:'Rebelle', marron:'Rêveur', rouge:'Promoteur', bleu:'Bourreau de travail', violet:'Persévérant' };
-  const keyOrder = ['orange','jaune','marron','rouge','bleu','violet'];
-
-  // Build radar scores from calcScores()
-  const radarScores = {};
-  keyOrder.forEach(k => radarScores[k] = 0);
   Object.entries(scores).forEach(([sym, val]) => {
     const k = symToKey[sym];
-    if (k) radarScores[k] = val;
+    if (k) window._radarScores[k] = val;
   });
+  buildRadarChart();
 
-  if (window._radarChart) { window._radarChart.destroy(); }
+  if (window._radarResizeHandler) window.removeEventListener('resize', window._radarResizeHandler);
+  let _radarResizeTimer;
+  window._radarResizeHandler = () => {
+    clearTimeout(_radarResizeTimer);
+    _radarResizeTimer = setTimeout(buildRadarChart, 150);
+  };
+  window.addEventListener('resize', window._radarResizeHandler);
+
+}
+
+function buildRadarChart() {
+  const profileColors = { orange:'#ff8c42', jaune:'#ffd166', marron:'#8B4513', rouge:'#ff4d6a', bleu:'#61d4ff', violet:'#c77dff' };
+  const keyOrder = ['orange','jaune','marron','rouge','bleu','violet'];
+  const w = window.innerWidth;
+  const profileNames = {
+    orange: 'Empathique', jaune: 'Rebelle', marron: 'Rêveur',
+    rouge: 'Promoteur',
+    bleu: w < 500 ? ['Bourreau','de travail'] : 'Bourreau de travail',
+    violet: 'Persévérant'
+  };
+  const radarScores = window._radarScores || {};
+  if (window._radarChart) { window._radarChart.destroy(); window._radarChart = null; }
   const ctx = document.getElementById('radarChart');
-  if (ctx) {
-    window._radarChart = new Chart(ctx.getContext('2d'), {
-      type: 'radar',
-      data: {
-        labels: keyOrder.map(k => profileNames[k]),
-        datasets: [{
-          label: 'Votre profil',
-          data: keyOrder.map(k => radarScores[k]),
-          backgroundColor: 'rgba(97,212,255,0.1)',
-          borderColor: '#61d4ff',
-          borderWidth: 2.5,
-          pointBackgroundColor: keyOrder.map(k => profileColors[k]),
-          pointBorderColor: '#0d0d14',
-          pointBorderWidth: 2,
-          pointRadius: 7,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          r: {
-            grid: { color: 'rgba(255,255,255,0.07)' },
-            angleLines: { color: 'rgba(255,255,255,0.07)' },
-            pointLabels: {
-              color: keyOrder.map(k => profileColors[k]),
-              font: { size: 13, family: 'DM Sans', weight: '600' }
-            },
-            ticks: { display: false, backdropColor: 'transparent' },
-            suggestedMin: 0,
-          }
+  if (!ctx) return;
+  window._radarChart = new Chart(ctx.getContext('2d'), {
+    type: 'radar',
+    data: {
+      labels: keyOrder.map(k => profileNames[k]),
+      datasets: [{
+        label: 'Votre profil',
+        data: keyOrder.map(k => radarScores[k] || 0),
+        backgroundColor: 'rgba(97,212,255,0.1)',
+        borderColor: '#61d4ff',
+        borderWidth: 2.5,
+        pointBackgroundColor: keyOrder.map(k => profileColors[k]),
+        pointBorderColor: '#0d0d14',
+        pointBorderWidth: 2,
+        pointRadius: 7,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          grid: { color: 'rgba(255,255,255,0.07)' },
+          angleLines: { color: 'rgba(255,255,255,0.07)' },
+          pointLabels: {
+            color: keyOrder.map(k => profileColors[k]),
+            font: () => ({
+              size: w < 480 ? 9 : w < 640 ? 11 : 13,
+              family: 'DM Sans',
+              weight: '600'
+            }),
+            padding: 12,
+            callback: (label) => label,
+          },
+          ticks: { display: false, backdropColor: 'transparent' },
+          suggestedMin: 0,
         }
       }
-    });
-  }
-
+    }
+  });
 }
 
 function toggleAccordion(btn) {
