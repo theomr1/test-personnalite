@@ -338,7 +338,7 @@ const PROFILES = {
     couleur: 'Violet',
     caracteristiques: 'Valeurs, loyauté, honnêteté. Engagé, sincère, confiant — mais peut être autoritaire.',
     besoin: 'Être reconnu pour ses opinions. Être écouté et respecté.',
-    driver: 'Soyez Parfaits !',
+    driver: 'Sois Parfait !',
     stress: 'Moralise, prêche à convertir, devient donneur de leçons.'
   },
   '☽': {
@@ -889,6 +889,7 @@ function restart() {
   document.getElementById('questions-wrap').innerHTML = '';
   currentQ = 0;
   answers = [];
+  window.history.replaceState({}, '', window.location.pathname);
 }
 
 function copyShareUrl(url) {
