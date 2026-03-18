@@ -111,7 +111,8 @@
   .drag-item:hover { background: var(--surface2); border-color: rgba(123,97,255,0.3); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
   .drag-item.dragging { opacity: 0.4; cursor: grabbing; }
   .drag-item.drag-over { border-color: var(--accent); background: rgba(123,97,255,0.08); transform: scale(1.015); box-shadow: 0 0 0 2px rgba(123,97,255,0.25); }
-  .rank-badge { width: 28px; height: 28px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); flex-shrink: 0; transition: background .2s, color .2s; }
+  .line-number { font-size: 12px; font-weight: 600; color: var(--muted); flex-shrink: 0; min-width: 18px; text-align: right; }
+  .rank-badge { width: 48px; height: 28px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); flex-shrink: 0; transition: background .2s, color .2s; }
 
   .drag-handle { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; opacity: 0.3; transition: opacity .15s; }
   .drag-item:hover .drag-handle { opacity: 0.7; }
@@ -515,8 +516,9 @@ function buildDragItem(qi, itemIdx) {
   div.draggable = true;
   div.innerHTML =
     '<div class="drag-handle"><span></span><span></span><span></span></div>' +
-    '<div class="rank-badge">—</div>' +
+    '<div class="line-number">—.</div>' +
     '<div class="drag-text">' + item.text + '</div>' +
+    '<div class="rank-badge">—</div>' +
     '<div class="sym-pill" style="background:' + prof.bg + ';color:' + prof.color + '">' + item.sym + '</div>';
   return div;
 }
@@ -531,8 +533,10 @@ function updateRanks(list) {
     const sym = QUESTIONS[qi].items[itemIdx].sym;
     const color = PROFILES[sym].color;
     const bg = PROFILES[sym].bg;
+    const lineNum = item.querySelector('.line-number');
+    if (lineNum) lineNum.textContent = (i + 1) + '.';
     const badge = item.querySelector('.rank-badge');
-    badge.textContent = pts;
+    badge.textContent = pts + ' pts';
     badge.style.color = color;
     badge.style.background = bg;
     badge.style.borderColor = color + '55';
