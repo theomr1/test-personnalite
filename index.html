@@ -73,10 +73,15 @@
   .progress-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .progress-label { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
   .progress-count { font-size: 13px; color: #61d4ff; font-weight: 600; }
-  .progress-bar { height: 3px; background: var(--border); border-radius: 100px; overflow: hidden; }
+  .progress-bar { height: 3px; background: var(--border); border-radius: 100px; overflow: hidden; position: relative; }
   .progress-fill {
-    height: 100%; background: linear-gradient(90deg, #ff4d4d, #ffd166);
-    border-radius: 100px; transition: width .4s cubic-bezier(.4,0,.2,1), background .4s ease;
+    height: 100%;
+    background: linear-gradient(90deg, #ff3b30 0%, #ff9500 50%, #34c759 100%);
+    background-size: 820px 100%;
+    background-position: left center;
+    background-repeat: no-repeat;
+    border-radius: 100px;
+    transition: width .4s cubic-bezier(.4,0,.2,1);
   }
 
   /* Question card */
@@ -107,9 +112,7 @@
   .drag-item.dragging { opacity: 0.4; cursor: grabbing; }
   .drag-item.drag-over { border-color: var(--accent); background: rgba(123,97,255,0.08); transform: scale(1.015); box-shadow: 0 0 0 2px rgba(123,97,255,0.25); }
   .rank-badge { width: 28px; height: 28px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); flex-shrink: 0; transition: background .2s, color .2s; }
-  .drag-item:nth-child(1) .rank-badge { background: rgba(255,209,102,0.15); color: var(--star-color); border-color: rgba(255,209,102,0.3); }
-  .drag-item:nth-child(2) .rank-badge { background: rgba(97,212,255,0.1); color: var(--square-color); border-color: rgba(97,212,255,0.2); }
-  .drag-item:nth-child(3) .rank-badge { background: rgba(6,214,160,0.1); color: var(--tri-color); border-color: rgba(6,214,160,0.2); }
+
   .drag-handle { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; opacity: 0.3; transition: opacity .15s; }
   .drag-item:hover .drag-handle { opacity: 0.7; }
   .drag-handle span { display: block; width: 18px; height: 2px; background: var(--text); border-radius: 2px; }
@@ -135,14 +138,14 @@
     -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
   }
   .results-header p { color: var(--muted); font-size: 15px; }
-  .breakdown-section { margin-bottom: 32px; }
+  .breakdown-section { margin-bottom: 0; }
   .breakdown-title { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #61d4ff; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 
   /* Accordion */
   .accordion { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 10px; }
   .accordion-trigger { width: 100%; display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: var(--surface); border: none; cursor: pointer; text-align: left; transition: background .15s; }
   .accordion-trigger:hover, .accordion.open .accordion-trigger { background: var(--surface2); }
-  .accordion-sym { font-size: 22px; flex-shrink: 0; }
+  .accordion-sym { font-size: 22px; flex-shrink: 0; width: 32px; text-align: center; }
   .accordion-rank { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: var(--surface2); color: var(--muted); flex-shrink: 0; }
   .accordion.rank1 .accordion-rank { background: rgba(255,209,102,0.2); color: var(--star-color); }
   .accordion-title-wrap { flex: 1; }
@@ -286,7 +289,8 @@
       <div class="breakdown-title">Classement — cliquez pour en savoir plus</div>
       <div id="scores-grid"></div>
     </div>
-    <button class="btn-restart" onclick="restart()">&#8635; Recommencer le test</button>
+    <div id="share-section" style="display:none"></div>
+    <button class="btn-restart" onclick="restart()" style="margin-top:40px">&#8635; Recommencer le test</button>
   </div>
 
 </div>
@@ -334,7 +338,7 @@ const PROFILES = {
     couleur: 'Violet',
     caracteristiques: 'Valeurs, loyauté, honnêteté. Engagé, sincère, confiant — mais peut être autoritaire.',
     besoin: 'Être reconnu pour ses opinions. Être écouté et respecté.',
-    driver: 'Sois Parfait !',
+    driver: 'Soyez Parfaits !',
     stress: 'Moralise, prêche à convertir, devient donneur de leçons.'
   },
   '☽': {
@@ -517,8 +521,20 @@ function buildDragItem(qi, itemIdx) {
 }
 
 function updateRanks(list) {
-  list.querySelectorAll('.drag-item').forEach((item, i) => {
-    item.querySelector('.rank-badge').textContent = i + 1;
+  const items = list.querySelectorAll('.drag-item');
+  const total = items.length;
+  items.forEach((item, i) => {
+    const pts = total - i;
+    const qi = parseInt(list.dataset.q);
+    const itemIdx = parseInt(item.dataset.idx);
+    const sym = QUESTIONS[qi].items[itemIdx].sym;
+    const color = PROFILES[sym].color;
+    const bg = PROFILES[sym].bg;
+    const badge = item.querySelector('.rank-badge');
+    badge.textContent = pts;
+    badge.style.color = color;
+    badge.style.background = bg;
+    badge.style.borderColor = color + '55';
   });
 }
 
@@ -624,13 +640,7 @@ function updateProgress() {
   const pct = ((currentQ + 1) / QUESTIONS.length) * 100;
   document.getElementById('prog-fill').style.width = pct + '%';
   document.getElementById('prog-count').textContent = (currentQ + 1) + ' / ' + QUESTIONS.length;
-  const t = currentQ / (QUESTIONS.length - 1);
-  const r1 = [255, 77, 77], r2 = [6, 214, 160];
-  const r3 = [255, 209, 102], r4 = [6, 214, 160];
-  const mid1 = r1.map((c, i) => Math.round(c + (r2[i] - c) * t));
-  const mid2 = r3.map((c, i) => Math.round(c + (r4[i] - c) * t));
-  document.getElementById('prog-fill').style.background =
-    'linear-gradient(90deg, rgb(' + mid1.join(',') + '), rgb(' + mid2.join(',') + '))';
+  // gradient is on .progress-bar container — no JS needed;
 }
 
 function calcScores() {
@@ -651,6 +661,10 @@ function showResults() {
   document.getElementById('site-header').style.display = 'none';
 
   const scores = calcScores();
+  showResultsFromScores(scores);
+}
+
+function showResultsFromScores(scores) {
   const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   const maxScore = sorted[0][1];
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
@@ -693,7 +707,7 @@ function showResults() {
       const p = pct[sym];
       barsEl.innerHTML += '<div class="profile-bar-row">' +
         '<div class="profile-bar-header">' +
-          '<span class="profile-bar-name" style="color:' + prof.color + '">' + sym + ' ' + prof.name + '</span>' +
+          '<span style="display:inline-flex;align-items:center;gap:6px">' +'<span style="width:24px;text-align:center;font-size:16px;color:' + prof.color + '">' + sym + '</span>' +'<span class="profile-bar-name" style="color:' + prof.color + '">' + prof.name + '</span>' +'</span>' +
           '<span class="profile-bar-score">' + p + '%</span>' +
         '</div>' +
         '<div class="profile-bar-track">' +
@@ -743,8 +757,8 @@ function showResults() {
           '<div class="accordion-subtitle">Couleur : ' + prof.couleur + '</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-right:4px">' +
-          '<div style="font-size:11px;font-weight:700;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;margin-right:4px">' + freq + '%</div>' +
-          '<div class="accordion-score" style="color:' + (isFirst ? prof.color : 'var(--muted)') + '">' + score + 'pts</div>' +
+          '<div style="font-size:11px;font-weight:700;color:' + prof.color + ';background:' + prof.bg + ';border:1px solid ' + prof.color + '44;border-radius:20px;padding:3px 10px;margin-right:4px;box-shadow:0 0 8px ' + prof.color + '33">' + freq + '%</div>' +
+          '<div class="accordion-score" style="color:' + prof.color + '">' + score + 'pts</div>' +
         '</div>' +
         '<div class="accordion-arrow">&#9660;</div>' +
       '</button>' +
@@ -773,6 +787,24 @@ function showResults() {
     grid.appendChild(acc);
   });
 
+
+  // ---- Share URL ----
+  const symEncode = {'☆':'O','□':'M','△':'B','○':'R','✚':'V','☽':'J'};
+  const shareParams = new URLSearchParams();
+  Object.entries(scores).forEach(([sym, s]) => shareParams.set(symEncode[sym] || encodeURIComponent(sym), s));
+  const shareUrl = window.location.origin + window.location.pathname + '?' + shareParams.toString();
+  const shareEl = document.getElementById('share-section');
+  if (shareEl) {
+    shareEl.innerHTML =
+      '<div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">' +
+        '<div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#61d4ff;margin-bottom:16px">Partager vos résultats à vos amis</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 20px">' +
+          '<div style="flex:1;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + shareUrl + '</div>' +
+          '<button id="copy-btn" onclick="copyShareUrl(\'' + shareUrl.replace(/'/g, "\'") + '\')" style="background:linear-gradient(135deg,#2196f3,#61d4ff);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:sans-serif;min-width:100px">Copier 🔗</button>' +
+        '</div>' +
+      '</div>';
+    shareEl.style.display = 'block';
+  }
   document.getElementById('results').style.display = 'flex';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -848,6 +880,7 @@ function confirmRestart() {
   if (window.confirm("Recommencer le test depuis le début ?")) restart();
 }
 
+
 function restart() {
   document.getElementById('results').style.display = 'none';
   document.getElementById('intro').style.display = 'flex';
@@ -857,6 +890,39 @@ function restart() {
   currentQ = 0;
   answers = [];
 }
+
+function copyShareUrl(url) {
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('copy-btn');
+    if (!btn) return;
+    btn.textContent = 'Copié 👍';
+    btn.style.background = 'linear-gradient(135deg,#06d6a0,#34c759)';
+    btn.style.cursor = 'default';
+    setTimeout(() => {
+      btn.textContent = 'Copier 🔗';
+      btn.style.background = 'linear-gradient(135deg,#2196f3,#61d4ff)';
+      btn.style.cursor = 'pointer';
+    }, 1500);
+  });
+}
+
+// Auto-load shared results from URL params
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const syms = ['O','M','B','R','V','J'];
+  const symMap = {'O':'☆','M':'□','B':'△','R':'○','V':'✚','J':'☽'};
+  if (syms.every(s => params.has(s))) {
+    window.addEventListener('DOMContentLoaded', () => {
+      const scores = {};
+      syms.forEach(s => { scores[symMap[s]] = parseInt(params.get(s)) || 0; });
+      document.getElementById('intro').style.display = 'none';
+      document.getElementById('site-header').style.display = 'none';
+      // inject scores and trigger showResults
+      window._injectedScores = scores;
+      showResultsFromScores(scores);
+    });
+  }
+})();
 </script>
 </body>
 </html>
